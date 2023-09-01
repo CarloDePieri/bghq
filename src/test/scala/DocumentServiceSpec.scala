@@ -1,23 +1,21 @@
 package it.carlodepieri.bghq
 
 import shared._
+import mocks.MockBrowser
 
 import zio.*
 import zio.test.*
-import zio.mock.*
-import net.ruippeixotog.scalascraper.browser.{Browser, JsoupBrowser}
-import net.ruippeixotog.scalascraper.model.Document
-import org.mockito.Mockito.{doReturn, mock, spy, when}
+
+import org.mockito.Mockito.when
 
 object DocumentServiceSpec extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suiteAll("A document service should") {
 
-      val mockUrl = "https://httpbin.org/html"
-      val browser = JsoupBrowser()
-      val stubDocument = browser.parseResource("/page.html")
-      val stubDocumentString = stubDocument.toHtml
-      val mockedBrowser = spy(JsoupBrowser())
+      val mockUrl = MockBrowser.url
+      val stubDocument = MockBrowser.document
+      val stubDocumentString = MockBrowser.documentString
+      val mockedBrowser = MockBrowser.spyBrowser
 
       //
       test("be able to download a web page") {
