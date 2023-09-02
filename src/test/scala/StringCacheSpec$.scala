@@ -7,7 +7,7 @@ import zio.redis._
 import shared._
 import mocks._
 
-object StringCacheSpec$ extends ZIOSpecDefault {
+object StringCacheSpec extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suite("A string cache service should")(
       //
@@ -56,5 +56,5 @@ import zio.test.junit.JUnitRunnableSpec
 
 class StringCacheJUnitSpec extends JUnitRunnableSpec {
   override def spec: Spec[TestEnvironment with Scope, Any] =
-    StringCacheSpec$.spec
+    StringCacheSpec.spec
 }

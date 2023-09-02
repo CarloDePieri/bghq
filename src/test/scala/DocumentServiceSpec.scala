@@ -49,6 +49,7 @@ object DocumentServiceSpec extends ZIOSpecDefault {
 
       }
     }
+      @@ TestAspect.silentLogging
       @@ TestAspect.tag("slow")
 }
 
