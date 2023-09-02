@@ -1,10 +1,7 @@
 package it.carlodepieri.bghq
 
-import utils.Base64Encoder
-
 import zio._
 import net.ruippeixotog.scalascraper.model.Document
-import java.net.URLEncoder
 
 trait CachedDocumentService {
   def get(url: String, skipCache: Boolean = false): Task[Document]
@@ -26,15 +23,14 @@ class CachedDocumentServiceImpl(
       url: String,
       skipCache: Boolean = false
   ): Task[Document] =
-    val encoded_url = URLEncoder.encode(url, "UTF-8")
     for {
       // first try to recover it from the cache
-      valueFromCache <- cacheService.get(encoded_url)
+      valueFromCache <- cacheService.get(url)
       value <- valueFromCache match
         case Some(v) =>
           // cache hit, return the Document from that cached string
           ZIO.log(s"cache hit for $url") *>
-            documentService.parseString(Base64Encoder.decode(v))
+            documentService.parseString(v)
         case None =>
           // cache miss
           for {
@@ -42,10 +38,7 @@ class CachedDocumentServiceImpl(
             // download the page
             page <- documentService.get(url)
             // add it to the cache
-            _ <- cacheService.set(
-              encoded_url,
-              Base64Encoder.encode(page.toHtml)
-            )
+            _ <- cacheService.set(url, page.toHtml)
           } yield page
     } yield value
 }

@@ -5,6 +5,7 @@ import zio.test._
 import zio.redis._
 
 import shared._
+import mocks._
 
 object StringCacheSpec$ extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
@@ -13,11 +14,11 @@ object StringCacheSpec$ extends ZIOSpecDefault {
       test("allow to cache a value") {
         for {
           redisTest <- ZIO.service[Redis]
-          result <- StringCache.set("meaningOfLife", "42")
-          found <- redisTest.get("meaningOfLife").returning[String]
+          result <- StringCache.set(MockBrowser.url, MockBrowser.documentString)
+          found <- redisTest.get(MockBrowser.safeUrl).returning[String]
         } yield {
           assertTrue(result)
-          assertTrue(found.get == "42")
+          assertTrue(found.get == MockBrowser.documentStringEncoded)
         }
       }
         .provide(RedisTestLayer, RedisStringCache.layer),
@@ -25,9 +26,12 @@ object StringCacheSpec$ extends ZIOSpecDefault {
       test("... allow to read a cached value") {
         for {
           redisTest <- ZIO.service[Redis]
-          _ <- redisTest.set("meaningOfLife", "42")
-          value <- StringCache.get("meaningOfLife")
-        } yield assertTrue(value.get == "42")
+          _ <- redisTest.set(
+            MockBrowser.safeUrl,
+            MockBrowser.documentStringEncoded
+          )
+          value <- StringCache.get(MockBrowser.url)
+        } yield assertTrue(value.get == MockBrowser.documentString)
       }
         .provide(RedisTestLayer, RedisStringCache.layer),
       //

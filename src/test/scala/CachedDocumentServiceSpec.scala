@@ -3,7 +3,6 @@ package it.carlodepieri.bghq
 import shared.*
 import mocks.{MockBrowser, MockCacheService, MockDocumentService}
 
-import utils.Base64Encoder
 import zio.*
 import zio.test.*
 import zio.mock.*
@@ -13,7 +12,6 @@ object CachedDocumentServiceSpec extends ZIOSpecDefault {
     suiteAll("A cached DocumentService") {
 
       val url = MockBrowser.url
-      val encodedUrl = MockBrowser.safeUrl
       val document = MockBrowser.document
 
       //
@@ -21,8 +19,8 @@ object CachedDocumentServiceSpec extends ZIOSpecDefault {
         val expectACacheHit =
           MockCacheService
             .Get(
-              Assertion.equalTo(encodedUrl),
-              Expectation.value(Some(MockBrowser.documentEncoded))
+              Assertion.equalTo(url),
+              Expectation.value(Some(MockBrowser.documentString))
             )
         val expectOnlyADocumentParseString =
           // it should not call the DocumentService.get method ...
@@ -52,14 +50,14 @@ object CachedDocumentServiceSpec extends ZIOSpecDefault {
       test("should download a page when cache missing") {
         val expectACacheMiss = MockCacheService
           .Get(
-            Assertion.equalTo(encodedUrl),
+            Assertion.equalTo(url),
             Expectation.value(None)
           )
         val expectACacheSet = MockCacheService
           .Set(
             Assertion.equalTo(
               // in here I need to specify optional argument, even if they are not actually passed in the actual call
-              (encodedUrl, Base64Encoder.encode(document.toHtml), None)
+              (url, document.toHtml, None)
             ),
             Expectation.value(true)
           )

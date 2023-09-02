@@ -1,9 +1,12 @@
 package it.carlodepieri.bghq
 
-import zio._
-import zio.redis._
+import utils.Base64Encoder
+import zio.*
+import zio.redis.*
 import zio.schema.*
 import zio.schema.codec.*
+
+import java.net.URLEncoder
 
 trait StringCache {
   def get(
@@ -17,14 +20,24 @@ trait StringCache {
 }
 
 object StringCache {
+
+  private def safeKey(key: String): String = URLEncoder.encode(key, "UTF-8")
+
   def get(key: String): ZIO[StringCache, Throwable, Option[String]] =
-    ZIO.serviceWithZIO[StringCache](_.get(key))
+    ZIO.serviceWithZIO[StringCache] {
+      sc =>
+        sc.get(safeKey(key)).map {
+          case Some(v) => Some(Base64Encoder.decode(v))
+          case None    => None
+        }
+    }
   def set(
       key: String,
       value: String,
       ttl: Option[Duration] = None
   ): ZIO[StringCache, Throwable, Boolean] =
-    ZIO.serviceWithZIO[StringCache](_.set(key, value, ttl))
+    val safeValue = Base64Encoder.encode(value)
+    ZIO.serviceWithZIO[StringCache](_.set(safeKey(key), safeValue, ttl))
 }
 
 class RedisStringCache(redis: Redis) extends StringCache {
@@ -54,12 +67,3 @@ object RedisStringCache {
 private object ProtobufCodecSupplier extends CodecSupplier {
   def get[A: Schema]: BinaryCodec[A] = ProtobufCodec.protobufCodec
 }
-
-val RedisLayer: ZLayer[Any, RedisError, Redis] =
-  ZLayer.succeed(RedisConfig.Default) >>>
-    RedisExecutor.layer.orDie ++
-    ZLayer.succeed[CodecSupplier](ProtobufCodecSupplier) >>>
-    Redis.layer
-
-val RedisStringCacheServiceLayer: ZLayer[Any, RedisError, StringCache] =
-  RedisLayer >>> RedisStringCache.layer
