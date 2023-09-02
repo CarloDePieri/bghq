@@ -3,6 +3,8 @@ package search
 
 import io.lemonlabs.uri.Url
 
+import java.time.LocalDateTime
+
 enum Status(val status: String):
   case AVAILABLE extends Status("available")
   case PREORDER extends Status("preorder")
@@ -15,14 +17,14 @@ abstract class GameEntry {
   val image: Url
 
   val availableStatus: Status
-  val available: Boolean = availableStatus != Status.UNAVAILABLE
+  val available: Boolean
 
   val lang: Option[String]
 
-  val price: Int
-  val discountedPrice: Option[Int]
+  val price: Option[Int]
   val discount: Option[Int]
-  val discountEndDate: Option[Int]
+  val originalPrice: Option[Int]
+  val discountEndDate: Option[LocalDateTime]
 }
 
 case class UnavailableEntry(
@@ -33,12 +35,13 @@ case class UnavailableEntry(
     lang: Option[String] = None
 ) extends GameEntry {
 
+  val available: Boolean = false
   override val availableStatus: Status = Status.UNAVAILABLE
 
-  override val price: Int = throw NoSuchFieldException()
-  override val discountedPrice: Option[Int] = throw NoSuchFieldException()
-  override val discount: Option[Int] = throw NoSuchFieldException()
-  override val discountEndDate: Option[Int] = throw NoSuchFieldException()
+  override val price: Option[Int] = None
+  override val discount: Option[Int] = None
+  override val originalPrice: Option[Int] = None
+  override val discountEndDate: Option[LocalDateTime] = None
 }
 
 case class Entry(
@@ -46,13 +49,15 @@ case class Entry(
     store: Url,
     title: String,
     image: Url,
-    price: Int,
     availableStatus: Status,
-    discountedPrice: Option[Int] = None,
+    price: Option[Int] = None,
     discount: Option[Int] = None,
-    discountEndDate: Option[Int] = None,
+    originalPrice: Option[Int] = None,
+    discountEndDate: Option[LocalDateTime] = None,
     lang: Option[String] = None
-) extends GameEntry {}
+) extends GameEntry {
+  val available: Boolean = true
+}
 
 object GameEntry {
   def apply(
@@ -60,24 +65,24 @@ object GameEntry {
       store: Url,
       title: String,
       image: Url,
-      price: Int,
+      price: Option[Int] = None,
       availableStatus: Option[Status] = None,
-      discountedPrice: Option[Int] = None,
       discount: Option[Int] = None,
-      discountEndDate: Option[Int] = None,
+      originalPrice: Option[Int] = None,
+      discountEndDate: Option[LocalDateTime] = None,
       lang: Option[String] = None
   ): GameEntry = Entry(
     url,
     store,
     title,
     image,
-    price,
     availableStatus match
       case Some(s) => s
       case None    => Status.AVAILABLE
     ,
-    discountedPrice,
+    price,
     discount,
+    originalPrice,
     discountEndDate,
     lang
   )
