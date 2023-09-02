@@ -25,6 +25,7 @@ lazy val root = (project in file("."))
       // libs
       "net.ruippeixotog" %% "scala-scraper" % "3.1.0",
       "dev.zio" %% "zio-json" % "0.6.1",
+      "io.lemonlabs" %% "scala-uri" % "4.0.3",
       // redis
       "dev.zio" %% "zio-redis" % "0.2.0",
       "dev.zio" %% "zio-schema-protobuf" % "0.4.11",
