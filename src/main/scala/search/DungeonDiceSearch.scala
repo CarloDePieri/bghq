@@ -2,7 +2,7 @@ package it.carlodepieri.bghq
 package search
 
 import io.lemonlabs.uri.Url
-import net.ruippeixotog.scalascraper.model.Document
+import net.ruippeixotog.scalascraper.model.{Document, Element}
 import net.ruippeixotog.scalascraper.dsl.DSL.*
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract.*
 import zio.prelude.data.Optional.AllValuesAreNullable
@@ -11,7 +11,7 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import scala.util.Try
 
-case class DungeonDiceElementParser(el: Document) extends ElementParser {
+case class DungeonDiceElementParser(el: Element) extends ElementParser {
 
   def getStatus: Status =
     val addToCartButton =
@@ -85,7 +85,15 @@ case class DungeonDiceElementParser(el: Document) extends ElementParser {
 }
 
 object DungeonDiceSearch extends Search {
-  override def parseElement(el: Document): Try[GameEntry] = Try {
+
+  override def selectElements(
+      page: Document
+  ): Try[List[Element]] =
+    Try {
+      page >> elementList("#js-product-list > div > article")
+    }
+
+  override def parseElement(el: Element): Try[GameEntry] = Try {
     val ep = DungeonDiceElementParser(el)
     val status = ep.getStatus
     val url = ep.getUrl

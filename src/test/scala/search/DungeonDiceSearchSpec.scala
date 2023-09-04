@@ -1,6 +1,10 @@
 package it.carlodepieri.bghq
 package search
 
+import shared.{ElementName, StoreName, *}
+import shared.ElementName.*
+import shared.StoreName.*
+
 import io.lemonlabs.uri.Url
 import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import zio.*
@@ -12,11 +16,42 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suiteAll("A search on DungeonDice") {
 
+      val getElement = getStoreElement(DUNGEONDICE)
+
       //
-      test("should be able to parse a search result") {
+      test("should be able to parse a search page document") {
         val document =
-          JsoupBrowser().parseResource("/dungeondice_entry_available.html")
-        val resultTry = DungeonDiceSearch.parseElement(document)
+          JsoupBrowser().parseResource("/dungeondice/search.html")
+
+        val maybeResults = DungeonDiceSearch.parseDocument(document)
+        maybeResults match
+          case Success(results) =>
+            assertTrue(results.length == 28)
+            results.head match
+              case Success(result) =>
+                assertTrue(result.title == "Terraforming Mars")
+              case Failure(e) =>
+                throw e
+          case Failure(e) =>
+            throw e
+      }
+
+      //
+      test("should be able to select search result html elements") {
+        val document =
+          JsoupBrowser().parseResource("/dungeondice/search.html")
+        val maybeElements = DungeonDiceSearch.selectElements(document)
+        maybeElements match
+          case Success(elements) =>
+            assertTrue(elements.length == 28)
+          case Failure(e) =>
+            throw e
+      }
+
+      //
+      test("should be able to parse a search result element") {
+        val element = getElement(ElementName.AVAILABLE)
+        val resultTry = DungeonDiceSearch.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(
@@ -42,12 +77,8 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
 
       //
       test("should be able to parse a discounted search result") {
-
-        val document =
-          JsoupBrowser().parseResource(
-            "/dungeondice_entry_available_discount.html"
-          )
-        val resultTry = DungeonDiceSearch.parseElement(document)
+        val element = getElement(ElementName.DISCOUNT)
+        val resultTry = DungeonDiceSearch.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(
@@ -61,11 +92,8 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
       //
       test("should be able to parse a timed discounted search result") {
 
-        val document =
-          JsoupBrowser().parseResource(
-            "/dungeondice_entry_available_timer.html"
-          )
-        val resultTry = DungeonDiceSearch.parseElement(document)
+        val element = getElement(ElementName.TIMER)
+        val resultTry = DungeonDiceSearch.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(
@@ -78,11 +106,8 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
       //
       test("should be able to parse a preorder search result") {
 
-        val document =
-          JsoupBrowser().parseResource(
-            "/dungeondice_entry_preorder.html"
-          )
-        val resultTry = DungeonDiceSearch.parseElement(document)
+        val element = getElement(ElementName.PREORDER)
+        val resultTry = DungeonDiceSearch.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(result.availableStatus == Status.PREORDER)
@@ -92,11 +117,8 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
 
       //
       test("should be able to parse an unavailable search result") {
-        val document =
-          JsoupBrowser().parseResource(
-            "/dungeondice_entry_unavailable.html"
-          )
-        val resultTry = DungeonDiceSearch.parseElement(document)
+        val element = getElement(ElementName.UNAVAILABLE)
+        val resultTry = DungeonDiceSearch.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(
