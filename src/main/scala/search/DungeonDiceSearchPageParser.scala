@@ -84,7 +84,7 @@ case class DungeonDiceElementParser(el: Element) extends ElementParser {
     }
 }
 
-object DungeonDiceSearch extends Search {
+object DungeonDiceSearchPageParser extends SearchPageParser {
 
   override def selectElements(
       page: Document
@@ -121,5 +121,15 @@ object DungeonDiceSearch extends Search {
       )
     } else
       UnavailableEntry(url, store, title, image, lang)
+  }
+
+  override def nextPage(page: Document): Try[Option[Url]] = Try {
+    val nextButton: Element =
+      page >> element("li.page-list-item.page-list-next")
+    val nextLink: Option[Element] = nextButton >?> element("a")
+    nextLink.map {
+      a =>
+        Url.parse(a.attr("href"))
+    }
   }
 }

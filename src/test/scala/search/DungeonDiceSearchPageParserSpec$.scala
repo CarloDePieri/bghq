@@ -12,18 +12,18 @@ import zio.test.*
 
 import scala.util.{Failure, Success}
 
-object DungeonDiceSearchSpec extends ZIOSpecDefault {
+object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suiteAll("A search on DungeonDice") {
 
-      val getElement = getStoreElement(DUNGEONDICE)
+      val getElement = getStoreElement(StoreName.DUNGEONDICE)
 
       //
       test("should be able to parse a search page document") {
         val document =
           JsoupBrowser().parseResource("/dungeondice/search.html")
 
-        val maybeResults = DungeonDiceSearch.parseDocument(document)
+        val maybeResults = DungeonDiceSearchPageParser.parseDocument(document)
         maybeResults match
           case Success(results) =>
             assertTrue(results.length == 28)
@@ -40,7 +40,7 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
       test("should be able to select search result html elements") {
         val document =
           JsoupBrowser().parseResource("/dungeondice/search.html")
-        val maybeElements = DungeonDiceSearch.selectElements(document)
+        val maybeElements = DungeonDiceSearchPageParser.selectElements(document)
         maybeElements match
           case Success(elements) =>
             assertTrue(elements.length == 28)
@@ -51,7 +51,7 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
       //
       test("should be able to parse a search result element") {
         val element = getElement(ElementName.AVAILABLE)
-        val resultTry = DungeonDiceSearch.parseElement(element)
+        val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(
@@ -78,7 +78,7 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
       //
       test("should be able to parse a discounted search result") {
         val element = getElement(ElementName.DISCOUNT)
-        val resultTry = DungeonDiceSearch.parseElement(element)
+        val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(
@@ -93,7 +93,7 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
       test("should be able to parse a timed discounted search result") {
 
         val element = getElement(ElementName.TIMER)
-        val resultTry = DungeonDiceSearch.parseElement(element)
+        val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(
@@ -107,7 +107,7 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
       test("should be able to parse a preorder search result") {
 
         val element = getElement(ElementName.PREORDER)
-        val resultTry = DungeonDiceSearch.parseElement(element)
+        val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(result.availableStatus == Status.PREORDER)
@@ -118,7 +118,7 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
       //
       test("should be able to parse an unavailable search result") {
         val element = getElement(ElementName.UNAVAILABLE)
-        val resultTry = DungeonDiceSearch.parseElement(element)
+        val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
             assertTrue(
@@ -127,6 +127,36 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
             )
           case Failure(e) =>
             throw e
+      }
+
+      //
+      test("should recognize if a next page is available") {
+
+        val document =
+          JsoupBrowser().parseResource("/dungeondice/search.html")
+        val document_2 =
+          JsoupBrowser().parseResource("/dungeondice/search_2.html")
+
+        assertTrue(
+          DungeonDiceSearchPageParser.nextPage(document) match
+            case Success(optionLink) =>
+              optionLink match
+                case Some(link) =>
+                  link == Url.parse(
+                    "https://www.dungeondice.it/ricerca?controller=search&page=2&s=terraforming+mars"
+                  )
+                case None => false
+            case Failure(e) =>
+              throw e
+          ,
+          DungeonDiceSearchPageParser.nextPage(document_2) match
+            case Success(optionLink) =>
+              optionLink match
+                case Some(_) => false
+                case None    => true
+            case Failure(e) =>
+              throw e
+        )
       }
     }
 }
@@ -141,7 +171,7 @@ object DungeonDiceSearchSpec extends ZIOSpecDefault {
  */
 import zio.test.junit.JUnitRunnableSpec
 
-class DungeonDiceSearchJUnitSpec extends JUnitRunnableSpec {
+class DungeonDiceSearchPageParserJUnitSpec extends JUnitRunnableSpec {
   override def spec: Spec[TestEnvironment with Scope, Any] =
-    DungeonDiceSearchSpec.spec
+    DungeonDiceSearchPageParserSpec$.spec
 }
