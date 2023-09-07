@@ -163,6 +163,16 @@ object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
               throw e
         )
       }
+
+      //
+      test("should be able to compose a search url from a query") {
+        val query = "Terraforming Mars"
+        val expectedUrl =
+          "https://www.dungeondice.it/ricerca?controller=search&s=terraforming+mars"
+        assertTrue(
+          DungeonDiceSearchPageParser.getSearchUrl(query) == expectedUrl
+        )
+      }
     }
 }
 

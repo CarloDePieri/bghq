@@ -1,7 +1,7 @@
 package it.carlodepieri.bghq
 package search
 
-import io.lemonlabs.uri.Url
+import io.lemonlabs.uri.{QueryString, Url}
 import net.ruippeixotog.scalascraper.model.{Document, Element}
 import net.ruippeixotog.scalascraper.dsl.DSL.*
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract.*
@@ -132,4 +132,15 @@ object DungeonDiceSearchPageParser extends SearchPageParser {
         Url.parse(a.attr("href"))
     }
   }
+
+  override def getSearchUrl(query: String): String =
+    Url(
+      scheme = "https",
+      host = "www.dungeondice.it",
+      path = "/ricerca",
+      query = QueryString.fromPairs(
+        "controller" -> "search",
+        "s" -> query.toLowerCase
+      )
+    ).toString
 }
