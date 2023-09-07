@@ -21,36 +21,37 @@ trait StringCache {
 
 object StringCache {
 
-  private def safeKey(key: String): String = URLEncoder.encode(key, "UTF-8")
-
   def get(key: String): ZIO[StringCache, Throwable, Option[String]] =
-    ZIO.serviceWithZIO[StringCache] {
-      sc =>
-        sc.get(safeKey(key)).map {
-          case Some(v) => Some(Base64Encoder.decode(v))
-          case None    => None
-        }
-    }
+    ZIO.serviceWithZIO[StringCache](_.get(key))
+
   def set(
       key: String,
       value: String,
       ttl: Option[Duration] = None
   ): ZIO[StringCache, Throwable, Boolean] =
-    val safeValue = Base64Encoder.encode(value)
-    ZIO.serviceWithZIO[StringCache](_.set(safeKey(key), safeValue, ttl))
+    ZIO.serviceWithZIO[StringCache](_.set(key, value, ttl))
 }
 
 class RedisStringCache(redis: Redis) extends StringCache {
 
+  private def safeKey(key: String): String = URLEncoder.encode(key, "UTF-8")
+
   override def get(key: String): IO[RedisError, Option[String]] =
-    redis.get(key).returning[String]
+    redis
+      .get(safeKey(key))
+      .returning[String]
+      .map {
+        maybeValue =>
+          maybeValue.map(Base64Encoder.decode)
+      }
 
   override def set(
       key: String,
       value: String,
       ttl: Option[zio.Duration] = None
   ): IO[RedisError, Boolean] =
-    redis.set(key, value, ttl)
+    val safeValue = Base64Encoder.encode(value)
+    redis.set(safeKey(key), safeValue, ttl)
 }
 
 object RedisStringCache {
@@ -62,6 +63,11 @@ object RedisStringCache {
         redis <- ZIO.service[Redis]
       } yield apply(redis)
     }
+  val redisLayer: ZLayer[Any, RedisError.IOError, Redis] =
+    ZLayer.succeed(RedisConfig.Default) >>>
+      RedisExecutor.layer ++ ZLayer
+        .succeed[CodecSupplier](ProtobufCodecSupplier)
+      >>> Redis.layer
 }
 
 private object ProtobufCodecSupplier extends CodecSupplier {
