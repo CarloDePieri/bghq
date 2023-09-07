@@ -10,15 +10,19 @@ import scala.util.Try
 trait SearchPageParser {
   // TODO a search method that uses streams
 
-  // Return the next page link, if present
-  def nextPage(page: Document): Try[Option[Url]]
 
   // Parse a page containing search results
-  def parseDocument(page: Document): Try[List[Try[GameEntry]]] =
-    selectElements(page).map {
-      elements =>
-        elements.map(parseElement)
-    }
+  def parseDocument(page: Document): Try[(List[Try[GameEntry]], Option[Url])] =
+    for {
+      elements <- selectElements(page)
+      next <- nextPage(page)
+    } yield (
+      elements.map(parseElement),
+      next
+    )
+
+  // Return the next page link, if present
+  def nextPage(page: Document): Try[Option[Url]]
 
   // Return a list of html elements, each containing a game search result
   def selectElements(

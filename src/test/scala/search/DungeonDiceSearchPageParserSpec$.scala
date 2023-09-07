@@ -25,8 +25,13 @@ object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
 
         val maybeResults = DungeonDiceSearchPageParser.parseDocument(document)
         maybeResults match
-          case Success(results) =>
-            assertTrue(results.length == 28)
+          case Success((results, next)) =>
+            assertTrue(
+              results.length == 28,
+              next == Url.parse(
+                "https://www.dungeondice.it/ricerca?controller=search&page=2&s=terraforming+mars"
+              )
+            )
             results.head match
               case Success(result) =>
                 assertTrue(result.title == "Terraforming Mars")
