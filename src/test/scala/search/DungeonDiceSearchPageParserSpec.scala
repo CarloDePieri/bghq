@@ -10,6 +10,8 @@ import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import zio.*
 import zio.test.*
 
+import org.mockito.Mockito.{mock, spy}
+
 import scala.util.{Failure, Success}
 
 object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
@@ -17,6 +19,13 @@ object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
     suiteAll("A search on DungeonDice") {
 
       val getElement = getStoreElement(StoreName.DUNGEONDICE)
+
+      //
+      test("should be able to return a stream of results from a query") {
+
+        assertTrue(false)
+      }
+        @@ TestAspect.tag("only")
 
       //
       test("should be able to parse a search page document") {
