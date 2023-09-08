@@ -3,12 +3,40 @@ package search
 
 import io.lemonlabs.uri.Url
 import net.ruippeixotog.scalascraper.model.{Document, Element}
+import zio._
+import zio.Chunk
+import zio.stream.*
 
 import java.time.LocalDateTime
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 trait SearchPageParser {
-  // TODO a search method that uses streams
+
+  def search(
+      query: String,
+      skipCache: Boolean = false
+  ): ZStream[CachedDocumentService, Throwable, Try[GameEntry]] = {
+    // build a 'paginated' stream
+    ZStream.paginateChunkZIO(
+      // Start from the search url build from the query
+      getSearchUrl(query)
+    )(
+      // This function is a url => (Chunk[Try[GameEntry]] -> Option[String]])
+      // After every call, elements from the Chunk will be added to the stream.
+      // While the Option is Some(s), this function will be called again with s as the new url
+      url =>
+        for {
+          cds <- ZIO.service[CachedDocumentService]
+          doc <- cds.get(url, skipCache)
+        } yield {
+          parseDocument(doc) match {
+            case Success((results, nextPageUrl)) =>
+              Chunk.fromIterable(results) -> nextPageUrl.map(_.toString)
+            case Failure(e) => throw e
+          }
+        }
+    )
+  }
 
   /**
    * Return a search page Url from a string query.

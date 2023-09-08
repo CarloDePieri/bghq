@@ -1,44 +1,91 @@
 package it.carlodepieri.bghq
 package search
 
-import shared.{ElementName, StoreName, *}
-import shared.ElementName.*
-import shared.StoreName.*
-
 import io.lemonlabs.uri.Url
-import net.ruippeixotog.scalascraper.browser.JsoupBrowser
 import zio.*
 import zio.test.*
+import org.mockito.Mockito.{mock, when}
+import zio.mock.Expectation
+import mocks.*
+import shared.*
 
-import org.mockito.Mockito.{mock, spy}
+import scala.util.{Failure, Success, Try}
 
-import scala.util.{Failure, Success}
-
-object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
+object DungeonDiceSearchPageParserSpec extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suiteAll("A search on DungeonDice") {
 
       val getElement = getStoreElement(StoreName.DUNGEONDICE)
+      val getResource = getStoreResource(StoreName.DUNGEONDICE)
+
+      val searchQuery = "Terraforming Mars"
+
+      val searchPageUrl1 =
+        "https://www.dungeondice.it/ricerca?controller=search&s=terraforming+mars"
+      val searchPageUrl2 =
+        "https://www.dungeondice.it/ricerca?controller=search&page=2&s=terraforming+mars"
+
+      val searchPageDocument1 = getResource("search")
+      val searchPageDocument2 = getResource("search_2")
+
+      val nextPage1 = Some(Url.parse(searchPageUrl2))
+      val nextPage2 = None
+
+      val results1: List[GameEntry] = RandomEntry.getList(25)
+      val results2: List[GameEntry] = RandomEntry.getList(13)
 
       //
       test("should be able to return a stream of results from a query") {
 
-        assertTrue(false)
+        // mock the 2 calls that will be made to the CachedDocumentService
+        val expectADocument =
+          MockCachedDocumentService
+            .Get(
+              Assertion.equalTo(searchPageUrl1, false),
+              Expectation.value(searchPageDocument1)
+            ) && MockCachedDocumentService
+            .Get(
+              Assertion.equalTo(searchPageUrl2, false),
+              Expectation.value(searchPageDocument2)
+            )
+
+        // mock the SearchPageParser
+        val mockedSearch = mock(DungeonDiceSearchPageParser.getClass)
+        when(mockedSearch.parseDocument(searchPageDocument1))
+          .thenReturn(Success((results1, nextPage1)))
+        when(mockedSearch.parseDocument(searchPageDocument2))
+          .thenReturn(Success((results2, nextPage2)))
+        when(mockedSearch.search(searchQuery)).thenCallRealMethod()
+        when(mockedSearch.getSearchUrl(searchQuery)).thenCallRealMethod()
+
+        // describe the ZIO that will perform the search search
+        val searchEffect: Task[Chunk[Try[GameEntry]]] =
+          mockedSearch
+            .search(searchQuery)
+            .provideLayer(
+              expectADocument
+            )
+            .runCollect
+
+        for {
+          results <- searchEffect
+        } yield assertTrue(
+          results.length == results1.length + results2.length
+        )
       }
         @@ TestAspect.tag("only")
 
       //
       test("should be able to parse a search page document") {
-        val document =
-          JsoupBrowser().parseResource("/dungeondice/search.html")
 
-        val maybeResults = DungeonDiceSearchPageParser.parseDocument(document)
+        val maybeResults =
+          DungeonDiceSearchPageParser.parseDocument(searchPageDocument1)
         maybeResults match
           case Success((results, next)) =>
             assertTrue(
               results.length == 28,
               next == Url.parse(
-                "https://www.dungeondice.it/ricerca?controller=search&page=2&s=terraforming+mars"
+                searchPageUrl2
               )
             )
             results.head match
@@ -52,9 +99,8 @@ object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
 
       //
       test("should be able to select search result html elements") {
-        val document =
-          JsoupBrowser().parseResource("/dungeondice/search.html")
-        val maybeElements = DungeonDiceSearchPageParser.selectElements(document)
+        val maybeElements =
+          DungeonDiceSearchPageParser.selectElements(searchPageDocument1)
         maybeElements match
           case Success(elements) =>
             assertTrue(elements.length == 28)
@@ -146,24 +192,19 @@ object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
       //
       test("should recognize if a next page is available") {
 
-        val document =
-          JsoupBrowser().parseResource("/dungeondice/search.html")
-        val document_2 =
-          JsoupBrowser().parseResource("/dungeondice/search_2.html")
-
         assertTrue(
-          DungeonDiceSearchPageParser.nextPage(document) match
+          DungeonDiceSearchPageParser.nextPage(searchPageDocument1) match
             case Success(optionLink) =>
               optionLink match
                 case Some(link) =>
                   link == Url.parse(
-                    "https://www.dungeondice.it/ricerca?controller=search&page=2&s=terraforming+mars"
+                    searchPageUrl2
                   )
                 case None => false
             case Failure(e) =>
               throw e
           ,
-          DungeonDiceSearchPageParser.nextPage(document_2) match
+          DungeonDiceSearchPageParser.nextPage(searchPageDocument2) match
             case Success(optionLink) =>
               optionLink match
                 case Some(_) => false
@@ -175,11 +216,10 @@ object DungeonDiceSearchPageParserSpec$ extends ZIOSpecDefault {
 
       //
       test("should be able to compose a search url from a query") {
-        val query = "Terraforming Mars"
-        val expectedUrl =
-          "https://www.dungeondice.it/ricerca?controller=search&s=terraforming+mars"
         assertTrue(
-          DungeonDiceSearchPageParser.getSearchUrl(query) == expectedUrl
+          DungeonDiceSearchPageParser.getSearchUrl(
+            searchQuery
+          ) == searchPageUrl1
         )
       }
     }
@@ -197,5 +237,5 @@ import zio.test.junit.JUnitRunnableSpec
 
 class DungeonDiceSearchPageParserJUnitSpec extends JUnitRunnableSpec {
   override def spec: Spec[TestEnvironment with Scope, Any] =
-    DungeonDiceSearchPageParserSpec$.spec
+    DungeonDiceSearchPageParserSpec.spec
 }

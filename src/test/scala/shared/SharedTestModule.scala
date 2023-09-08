@@ -31,8 +31,7 @@ enum ElementName(val name: String):
 def getStoreElement(storeName: StoreName)(
     elementName: ElementName
 ): Element =
-  JsoupBrowser()
-    .parseResource(
-      s"/${storeName.name}/element_${elementName.name}.html"
-    )
-    .root
+  getStoreResource(storeName)(s"element_${elementName.name}").root
+
+def getStoreResource(storeName: StoreName)(resourceName: String): Document =
+  JsoupBrowser().parseResource(s"/${storeName.name}/$resourceName.html")
