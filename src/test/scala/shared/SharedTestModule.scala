@@ -21,17 +21,27 @@ extension (outputChunk: Chunk[ZTestLogger.LogEntry])
 enum StoreName(val name: String):
   case DUNGEONDICE extends StoreName("dungeondice")
 
-enum ElementName(val name: String):
-  case AVAILABLE extends ElementName("available")
-  case DISCOUNT extends ElementName("discount")
-  case PREORDER extends ElementName("preorder")
-  case TIMER extends ElementName("timer")
-  case UNAVAILABLE extends ElementName("unavailable")
+trait Elements {
+  def available: Element
+  def discount: Element
+  def preorder: Element
+  def timer: Element
+  def unavailable: Element
+}
 
-def getStoreElement(storeName: StoreName)(
-    elementName: ElementName
-): Element =
-  getStoreResource(storeName)(s"element_${elementName.name}").root
+case class StoreResource(name: StoreName) {
 
-def getStoreResource(storeName: StoreName)(resourceName: String): Document =
-  JsoupBrowser().parseResource(s"/${storeName.name}/$resourceName.html")
+  val elements: Elements = new Elements {
+    override def available: Element = getElement("available")
+    override def discount: Element = getElement("discount")
+    override def preorder: Element = getElement("preorder")
+    override def timer: Element = getElement("timer")
+    override def unavailable: Element = getElement("unavailable")
+  }
+
+  def getElement(elementName: String): Element =
+    resource(s"element_$elementName").root
+
+  def resource(resourceName: String): Document =
+    JsoupBrowser().parseResource(s"/${name.name}/$resourceName.html")
+}

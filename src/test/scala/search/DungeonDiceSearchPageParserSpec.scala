@@ -15,8 +15,7 @@ object DungeonDiceSearchPageParserSpec extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suiteAll("A search on DungeonDice") {
 
-      val getElement = getStoreElement(StoreName.DUNGEONDICE)
-      val getResource = getStoreResource(StoreName.DUNGEONDICE)
+      val storeResource = StoreResource(StoreName.DUNGEONDICE)
 
       val searchQuery = "Terraforming Mars"
 
@@ -25,8 +24,8 @@ object DungeonDiceSearchPageParserSpec extends ZIOSpecDefault {
       val searchPageUrl2 =
         "https://www.dungeondice.it/ricerca?controller=search&page=2&s=terraforming+mars"
 
-      val searchPageDocument1 = getResource("search")
-      val searchPageDocument2 = getResource("search_2")
+      val searchPageDocument1 = storeResource.resource("search")
+      val searchPageDocument2 = storeResource.resource("search_2")
 
       val nextPage1 = Some(Url.parse(searchPageUrl2))
       val nextPage2 = None
@@ -110,7 +109,7 @@ object DungeonDiceSearchPageParserSpec extends ZIOSpecDefault {
 
       //
       test("should be able to parse a search result element") {
-        val element = getElement(ElementName.AVAILABLE)
+        val element = storeResource.elements.available
         val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
@@ -137,7 +136,7 @@ object DungeonDiceSearchPageParserSpec extends ZIOSpecDefault {
 
       //
       test("should be able to parse a discounted search result") {
-        val element = getElement(ElementName.DISCOUNT)
+        val element = storeResource.elements.discount
         val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
@@ -152,7 +151,7 @@ object DungeonDiceSearchPageParserSpec extends ZIOSpecDefault {
       //
       test("should be able to parse a timed discounted search result") {
 
-        val element = getElement(ElementName.TIMER)
+        val element = storeResource.elements.timer
         val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
@@ -166,7 +165,7 @@ object DungeonDiceSearchPageParserSpec extends ZIOSpecDefault {
       //
       test("should be able to parse a preorder search result") {
 
-        val element = getElement(ElementName.PREORDER)
+        val element = storeResource.elements.preorder
         val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
@@ -177,7 +176,7 @@ object DungeonDiceSearchPageParserSpec extends ZIOSpecDefault {
 
       //
       test("should be able to parse an unavailable search result") {
-        val element = getElement(ElementName.UNAVAILABLE)
+        val element = storeResource.elements.unavailable
         val resultTry = DungeonDiceSearchPageParser.parseElement(element)
         resultTry match
           case Success(result) =>
