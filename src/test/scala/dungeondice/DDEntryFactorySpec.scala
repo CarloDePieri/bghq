@@ -18,10 +18,10 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
 
       test("should be able to parse an element") {
         for {
-          ef <- ZIO.service[EntryFactory]
+          entryTry <- EntryFactory.buildEntry(storeResource.elements.available)
         } yield {
 
-          val result = ef.buildEntry(storeResource.elements.available).get
+          val result = entryTry.get
           assertTrue(
             result.available,
             result.availableStatus == Status.AVAILABLE,
@@ -44,9 +44,9 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
 
       test("should be able to parse a discounted element") {
         for {
-          ef <- ZIO.service[EntryFactory]
+          entryTry <- EntryFactory.buildEntry(storeResource.elements.discount)
         } yield {
-          val result = ef.buildEntry(storeResource.elements.discount).get
+          val result = entryTry.get
           assertTrue(
             result.discount.contains(20),
             result.originalPrice.contains(4499)
@@ -56,20 +56,19 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
 
       test("should be able to parse a timed discounted element") {
         for {
-          ef <- ZIO.service[EntryFactory]
+          entryTry <- EntryFactory.buildEntry(storeResource.elements.timer)
         } yield assertTrue(
-          ef.buildEntry(storeResource.elements.timer)
-            .get
-            .discountEndDate
-            .nonEmpty
+          entryTry.get.discountEndDate.nonEmpty
         )
       }
 
       test("should be able to parse an unavailable element") {
         for {
-          ef <- ZIO.service[EntryFactory]
+          entryTry <- EntryFactory.buildEntry(
+            storeResource.elements.unavailable
+          )
         } yield {
-          val result = ef.buildEntry(storeResource.elements.unavailable).get
+          val result = entryTry.get
           assertTrue(
             !result.available,
             result.availableStatus == Status.UNAVAILABLE
@@ -79,14 +78,10 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
 
       test("should be able to parse a preorder element") {
         for {
-          ef <- ZIO.service[EntryFactory]
-        } yield {
-          assertTrue(
-            ef.buildEntry(storeResource.elements.preorder)
-              .get
-              .availableStatus == Status.PREORDER
-          )
-        }
+          entryTry <- EntryFactory.buildEntry(storeResource.elements.preorder)
+        } yield assertTrue(
+          entryTry.get.availableStatus == Status.PREORDER
+        )
       }
 
     }

@@ -1,5 +1,4 @@
 package it.carlodepieri.bghq
-package search
 
 import io.lemonlabs.uri.Url
 
