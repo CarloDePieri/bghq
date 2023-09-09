@@ -73,18 +73,3 @@ trait SearchPageParser {
    */
   def parseElement(element: Element): Try[GameEntry]
 }
-
-trait ElementParser {
-
-  extension (s: String) def toSafePrice: Int = (s.toFloat * 100).toInt
-
-  def getStatus: Status
-  def getPrice: Option[Int]
-  def getUrl: Url
-  def getStore: Url
-  def getImage: Url
-  def getTitle: String
-  def getDiscount: Option[Int]
-  def getOriginalPrice: Option[Int]
-  def getDiscountEndDate: Option[LocalDateTime]
-}
