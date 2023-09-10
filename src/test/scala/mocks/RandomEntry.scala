@@ -1,8 +1,6 @@
 package it.carlodepieri.bghq
 package mocks
 
-import search.{Entry, Status}
-
 import io.lemonlabs.uri.Url
 import org.scalacheck.Gen
 
