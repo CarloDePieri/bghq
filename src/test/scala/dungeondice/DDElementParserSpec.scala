@@ -9,16 +9,16 @@ import zio.internal.stacktracer.SourceLocation
 
 import io.lemonlabs.uri.Url
 
-object DDEntryFactorySpec extends ZIOSpecDefault {
+object DDElementParserSpec extends ZIOSpecDefault {
 
   override def spec: Spec[TestEnvironment with Scope, Any] =
-    suiteAll("A DungeonDice entry factory") {
+    suiteAll("A DungeonDice element parser") {
 
       val storeResource = StoreResource(StoreName.DUNGEONDICE)
 
       test("should be able to parse an element") {
         for {
-          entryTry <- EntryFactory.buildEntry(storeResource.elements.available)
+          entryTry <- ElementParser.parse(storeResource.elements.available)
         } yield {
 
           val result = entryTry.get
@@ -42,9 +42,17 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
         }
       }
 
+      test(
+        "can parse single element fields via the low level Parser implementation"
+      ) {
+        for {
+          parser <- ElementParser.getParser(storeResource.elements.available)
+        } yield assertTrue(parser.title.get == "Terraforming Mars - Big Box")
+      }
+
       test("should be able to parse a discounted element") {
         for {
-          entryTry <- EntryFactory.buildEntry(storeResource.elements.discount)
+          entryTry <- ElementParser.parse(storeResource.elements.discount)
         } yield {
           val result = entryTry.get
           assertTrue(
@@ -56,7 +64,7 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
 
       test("should be able to parse a timed discounted element") {
         for {
-          entryTry <- EntryFactory.buildEntry(storeResource.elements.timer)
+          entryTry <- ElementParser.parse(storeResource.elements.timer)
         } yield assertTrue(
           entryTry.get.discountEndDate.nonEmpty
         )
@@ -64,7 +72,7 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
 
       test("should be able to parse an unavailable element") {
         for {
-          entryTry <- EntryFactory.buildEntry(
+          entryTry <- ElementParser.parse(
             storeResource.elements.unavailable
           )
         } yield {
@@ -78,14 +86,14 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
 
       test("should be able to parse a preorder element") {
         for {
-          entryTry <- EntryFactory.buildEntry(storeResource.elements.preorder)
+          entryTry <- ElementParser.parse(storeResource.elements.preorder)
         } yield assertTrue(
           entryTry.get.availableStatus == Status.PREORDER
         )
       }
 
     }
-      .provide(DDEntryFactory.layer)
+      .provide(DDElementParser.layer)
 }
 
 /**
@@ -98,7 +106,7 @@ object DDEntryFactorySpec extends ZIOSpecDefault {
  */
 import zio.test.junit.JUnitRunnableSpec
 
-class DDEntryFactoryJUnitSpec extends JUnitRunnableSpec {
+class DDElementParserJUnitSpec extends JUnitRunnableSpec {
   override def spec: Spec[TestEnvironment with Scope, Any] =
-    DDEntryFactorySpec.spec
+    DDElementParserSpec.spec
 }
