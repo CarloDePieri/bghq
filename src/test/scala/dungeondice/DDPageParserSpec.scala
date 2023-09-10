@@ -209,3 +209,18 @@ object DDPageParserSpec extends ZIOSpecDefault {
       }
     }
 }
+
+/**
+ * Intellij currently can either:
+ *   - Run a specific test with ZIO plugin: `object TestSpec extends ZIOSpecDefault`
+ *   - Run all test in a JUnit format: `class TestSpec extends JUnitRunnableSpec`
+ *
+ * Something like `object TestSpec extends JUnitRunnableSpec` does not work right now.
+ * To keep both options available, let's add a separate junit spec that recalls the ZIO one.
+ */
+import zio.test.junit.JUnitRunnableSpec
+
+class DDPageParserJUnitSpec extends JUnitRunnableSpec {
+  override def spec: Spec[TestEnvironment with Scope, Any] =
+    DDPageParserSpec.spec
+}

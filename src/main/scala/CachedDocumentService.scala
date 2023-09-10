@@ -1,7 +1,8 @@
 package it.carlodepieri.bghq
 
-import zio._
+import zio.*
 import net.ruippeixotog.scalascraper.model.Document
+import zio.redis.RedisError
 
 trait CachedDocumentService {
   def get(url: String, skipCache: Boolean = false): Task[Document]
@@ -59,4 +60,8 @@ object CachedDocumentServiceImpl {
       cs <- ZIO.service[StringCache]
     } yield apply(ds, cs)
   }
+  def layerDefault: ZLayer[Any, RedisError, CachedDocumentService] =
+    RedisStringCache.redisLayer >>>
+      RedisStringCache.layer ++ JSoupDocumentService.layer >>>
+      CachedDocumentServiceImpl.layer
 }
