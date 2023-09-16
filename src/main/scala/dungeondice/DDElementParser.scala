@@ -11,9 +11,13 @@ import net.ruippeixotog.scalascraper.dsl.DSL.Extract.*
 import zio._
 
 class DDElementParser extends ElementParser {
-  override def getParser(elementToParse: Element): Parser =
+  override def getParser(
+      elementToParse: Element,
+      pageDocument: CachedDocument
+  ): Parser =
     new Parser(
-      elementToParse
+      elementToParse,
+      pageDocument
     ) {
 
       override val status: Try[Status] = Try {

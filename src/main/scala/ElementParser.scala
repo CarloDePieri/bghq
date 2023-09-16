@@ -2,13 +2,16 @@ package it.carlodepieri.bghq
 
 import scala.util.Try
 import java.time.LocalDateTime
-
-import zio._
-
+import zio.*
 import io.lemonlabs.uri.Url
 import net.ruippeixotog.scalascraper.model.Element
 
-abstract class Parser(val htmlElement: Element) {
+import java.time.{Duration => JavaDuration}
+
+abstract class Parser(
+    val htmlElement: Element,
+    val document: CachedDocument
+) {
 
   extension (s: String) def toSafePrice: Int = (s.toFloat * 100).toInt
 
@@ -23,24 +26,28 @@ abstract class Parser(val htmlElement: Element) {
     } yield {
       if (parsedStatus == Status.AVAILABLE || parsedStatus == Status.PREORDER) {
         Entry(
-          parsedUrl,
-          parsedStore,
-          parsedTitle,
-          parsedImage,
-          parsedStatus,
-          parsedPrice,
-          discount,
-          originalPrice,
-          discountEndDate,
-          lang
+          url = parsedUrl,
+          store = parsedStore,
+          title = parsedTitle,
+          image = parsedImage,
+          pageCreatedOn = document.createdAt,
+          pageTTL = document.ttl,
+          availableStatus = parsedStatus,
+          price = parsedPrice,
+          discount = discount,
+          originalPrice = originalPrice,
+          discountEndDate = discountEndDate,
+          lang = lang
         )
       } else
         UnavailableEntry(
-          parsedUrl,
-          parsedStore,
-          parsedTitle,
-          parsedImage,
-          lang
+          url = parsedUrl,
+          store = parsedStore,
+          title = parsedTitle,
+          image = parsedImage,
+          pageCreatedOn = document.createdAt,
+          pageTTL = document.ttl,
+          lang = lang
         )
     }
 
@@ -57,8 +64,11 @@ abstract class Parser(val htmlElement: Element) {
 }
 
 trait ElementParser {
-  def parse(element: Element): Try[GameEntry] = getParser(element).buildEntry()
-  def getParser(element: Element): Parser
+  def parse(
+      element: Element,
+      fromDocument: CachedDocument
+  ): Try[GameEntry] = getParser(element, fromDocument).buildEntry()
+  def getParser(element: Element, pageDocument: CachedDocument): Parser
 }
 
 val a = List()
@@ -72,8 +82,11 @@ object ElementParser {
    * @param element the html element to parse
    * @return a [[Try]] of [[GameEntry]] which allows to handle both successful and failed parse
    */
-  def parse(element: Element): ZIO[ElementParser, Nothing, Try[GameEntry]] =
-    ZIO.serviceWith[ElementParser](_.parse(element))
+  def parse(
+      element: Element,
+      fromDocument: CachedDocument
+  ): ZIO[ElementParser, Nothing, Try[GameEntry]] =
+    ZIO.serviceWith[ElementParser](_.parse(element, fromDocument))
 
   /**
    * Get access to the low level [[Parser]] implementation, which can be used to parse only specific field of an element.
@@ -81,6 +94,9 @@ object ElementParser {
    * @param element the html element to parse
    * @return a [[Parser]] implementation
    */
-  def getParser(element: Element): ZIO[ElementParser, Nothing, Parser] =
-    ZIO.serviceWith[ElementParser](_.getParser(element))
+  def getParser(
+      element: Element,
+      document: CachedDocument
+  ): ZIO[ElementParser, Nothing, Parser] =
+    ZIO.serviceWith[ElementParser](_.getParser(element, document))
 }

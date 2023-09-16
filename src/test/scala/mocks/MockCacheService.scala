@@ -5,7 +5,7 @@ import zio.mock.{Mock, Proxy}
 import zio.{Duration, Task, URLayer, ZIO, ZLayer}
 
 object MockCacheService extends Mock[StringCache] {
-  object Get extends Effect[String, Throwable, Option[String]]
+  object Get extends Effect[String, Throwable, Option[CachedString]]
   object Set
       extends Effect[(String, String, Option[Duration]), Throwable, Boolean]
 
@@ -14,7 +14,9 @@ object MockCacheService extends Mock[StringCache] {
       for {
         proxy <- ZIO.service[Proxy]
       } yield new StringCache {
-        override def get(key: String): Task[Option[String]] =
+        override def get(
+            key: String
+        ): Task[Option[CachedString]] =
           proxy(Get, key)
 
         override def set(

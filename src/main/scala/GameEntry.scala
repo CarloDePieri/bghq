@@ -1,6 +1,7 @@
 package it.carlodepieri.bghq
 
 import io.lemonlabs.uri.Url
+import zio.Duration
 
 import java.time.LocalDateTime
 
@@ -14,6 +15,9 @@ abstract class GameEntry {
   val store: Url
   val title: String
   val image: Url
+
+  val pageCreatedOn: LocalDateTime
+  val pageTTL: Option[Duration]
 
   val availableStatus: Status
   val available: Boolean
@@ -31,6 +35,8 @@ case class UnavailableEntry(
     store: Url,
     title: String,
     image: Url,
+    pageCreatedOn: LocalDateTime,
+    pageTTL: Option[Duration] = None,
     lang: Option[String] = None
 ) extends GameEntry {
 
@@ -49,6 +55,8 @@ case class Entry(
     title: String,
     image: Url,
     availableStatus: Status,
+    pageCreatedOn: LocalDateTime,
+    pageTTL: Option[Duration] = None,
     price: Option[Int] = None,
     discount: Option[Int] = None,
     originalPrice: Option[Int] = None,
@@ -64,6 +72,8 @@ object GameEntry {
       store: Url,
       title: String,
       image: Url,
+      pageCreatedOn: LocalDateTime,
+      pageTTL: Option[Duration] = None,
       price: Option[Int] = None,
       availableStatus: Option[Status] = None,
       discount: Option[Int] = None,
@@ -79,6 +89,8 @@ object GameEntry {
       case Some(s) => s
       case None    => Status.AVAILABLE
     ,
+    pageCreatedOn = pageCreatedOn,
+    pageTTL = pageTTL,
     price,
     discount,
     originalPrice,
@@ -90,12 +102,16 @@ object GameEntry {
       store: Url,
       title: String,
       image: Url,
+      pageCreatedOn: LocalDateTime,
+      pageTTL: Option[Duration] = None,
       lang: Option[String] = None
   ): GameEntry = UnavailableEntry(
     url,
     store,
     title,
     image,
+    pageCreatedOn = pageCreatedOn,
+    pageTTL = pageTTL,
     lang
   )
 }

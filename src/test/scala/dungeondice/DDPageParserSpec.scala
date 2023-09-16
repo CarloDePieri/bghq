@@ -8,7 +8,6 @@ import io.lemonlabs.uri.Url
 import zio.*
 import zio.test.*
 import zio.mock.*
-
 import org.mockito.Mockito.{mock, when}
 
 import scala.util.{Success, Try}
@@ -16,6 +15,8 @@ import net.ruippeixotog.scalascraper.dsl.DSL.*
 import net.ruippeixotog.scalascraper.dsl.DSL.Extract.*
 import net.ruippeixotog.scalascraper.model.Element
 import zio.stream.ZStream
+
+import java.time.LocalDateTime
 
 object DDPageParserSpec extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
@@ -35,13 +36,18 @@ object DDPageParserSpec extends ZIOSpecDefault {
       val searchResults2: List[Try[GameEntry]] =
         RandomEntry.getList(13).map(Success(_))
 
+      val cachedDocument1 =
+        CachedDocument(searchPageDocument1, LocalDateTime.now(), Some(6.hours))
+      val cachedDocument2 =
+        CachedDocument(searchPageDocument2, LocalDateTime.now(), Some(6.hours))
+
       test("should be able to parse a single element") {
         val element = storeResource.elements.available
         val entrySample = RandomEntry.sample
         val mockedElementParser =
           MockElementParser
             .Parse(
-              Assertion.equalTo(element),
+              Assertion.equalTo(element, cachedDocument1),
               Expectation.value(Success(entrySample))
             )
             .atLeast(1)
@@ -49,7 +55,7 @@ object DDPageParserSpec extends ZIOSpecDefault {
         for {
           entryTry <-
             PageParser
-              .parseElement(element)
+              .parseElement(element, cachedDocument1)
               .provide(
                 mockedElementParser,
                 DDPageParser.layer
@@ -105,7 +111,7 @@ object DDPageParserSpec extends ZIOSpecDefault {
         for {
           entriesTry <-
             PageParser
-              .parsePage(searchPageDocument1)
+              .parsePage(cachedDocument1)
               .provide(
                 mockedElementParser,
                 DDPageParser.layer
@@ -125,19 +131,19 @@ object DDPageParserSpec extends ZIOSpecDefault {
           MockCachedDocumentService
             .Get(
               Assertion.equalTo(searchPageUrl1, false),
-              Expectation.value(searchPageDocument1)
+              Expectation.value(cachedDocument1)
             ) && MockCachedDocumentService
             .Get(
               Assertion.equalTo(searchPageUrl2, false),
-              Expectation.value(searchPageDocument2)
+              Expectation.value(cachedDocument2)
             )
 
         // Create a PARTIAL mock of a DDPageParser
         val mockedPageParser = mock(classOf[DDPageParser])
         // mock .parsePage and .nextPage calls
-        when(mockedPageParser.parsePage(searchPageDocument1))
+        when(mockedPageParser.parsePage(cachedDocument1))
           .thenReturn(Success(searchResults1))
-        when(mockedPageParser.parsePage(searchPageDocument2))
+        when(mockedPageParser.parsePage(cachedDocument2))
           .thenReturn(Success(searchResults2))
         when(mockedPageParser.nextPage(searchPageDocument1))
           .thenReturn(Success(Some(Url.parse(searchPageUrl2))))
@@ -172,13 +178,13 @@ object DDPageParserSpec extends ZIOSpecDefault {
           MockCachedDocumentService
             .Get(
               Assertion.equalTo(searchPageUrl1, false),
-              Expectation.value(searchPageDocument1)
+              Expectation.value(cachedDocument1)
             )
 
         // Create a PARTIAL mock of a DDPageParser
         val mockedPageParser = mock(classOf[DDPageParser])
         // mock .parsePage and .nextPage calls
-        when(mockedPageParser.parsePage(searchPageDocument1))
+        when(mockedPageParser.parsePage(cachedDocument1))
           .thenReturn(Success(searchResults1))
         when(mockedPageParser.nextPage(searchPageDocument1))
           .thenReturn(Success(Some(Url.parse(searchPageUrl2))))

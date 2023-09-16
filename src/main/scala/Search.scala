@@ -10,7 +10,7 @@ import io.lemonlabs.uri.Url
 trait Search {
   def search(
       query: String,
-      skipCache: Boolean = false
+      forceCacheRefresh: Boolean = false
   ): ZStream[CachedDocumentService, Throwable, Try[GameEntry]]
   def getSearchUrl(query: String): Try[Url]
 }
@@ -20,11 +20,11 @@ object Search {
   // TODO
   def search(
       query: String,
-      skipCache: Boolean = false
+      forceCacheRefresh: Boolean = false
   ): ZIO[Search, Nothing, ZStream[CachedDocumentService, Throwable, Try[
     GameEntry
   ]]] =
-    ZIO.serviceWith[Search](_.search(query, skipCache))
+    ZIO.serviceWith[Search](_.search(query, forceCacheRefresh))
 
   // TODO
   def getSearchUrl(query: String): ZIO[Search, Nothing, Try[Url]] =

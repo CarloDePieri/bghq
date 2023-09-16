@@ -4,6 +4,7 @@ package mocks
 import io.lemonlabs.uri.Url
 import org.scalacheck.Gen
 
+import java.time.LocalDateTime
 import scala.util.Random
 
 object RandomEntry {
@@ -23,7 +24,8 @@ object RandomEntry {
     title,
     image,
     availableStatus,
-    price
+    LocalDateTime.now(),
+    price = price
   )
 
   def sample: Entry = entryGen.sample.get

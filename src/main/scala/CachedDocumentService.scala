@@ -4,16 +4,34 @@ import zio.*
 import net.ruippeixotog.scalascraper.model.Document
 import zio.redis.RedisError
 
+import java.time.LocalDateTime
+
+/**
+ * Represent a cached document.
+ *
+ * @param document the actual document
+ * @param createdAt the time this document was created (if it was cached, may be some time ago)
+ * @param ttl (optional) the time to live of this value, if it was cached
+ */
+case class CachedDocument(
+    document: Document,
+    createdAt: LocalDateTime = LocalDateTime.now(),
+    ttl: Option[Duration] = None
+)
+
 trait CachedDocumentService {
-  def get(url: String, skipCache: Boolean = false): Task[Document]
+  def get(
+      url: String,
+      forceCacheRefresh: Boolean = false
+  ): Task[CachedDocument]
 }
 
 object CachedDocumentService {
   def get(
       url: String,
-      skipCache: Boolean = false
-  ): ZIO[CachedDocumentService, Throwable, Document] =
-    ZIO.serviceWithZIO[CachedDocumentService](_.get(url, skipCache))
+      forceCacheRefresh: Boolean = false
+  ): ZIO[CachedDocumentService, Throwable, CachedDocument] =
+    ZIO.serviceWithZIO[CachedDocumentService](_.get(url, forceCacheRefresh))
 }
 
 class CachedDocumentServiceImpl(
@@ -22,16 +40,28 @@ class CachedDocumentServiceImpl(
 ) extends CachedDocumentService {
   override def get(
       url: String,
-      skipCache: Boolean = false
-  ): Task[Document] =
+      forceCacheRefresh: Boolean = false
+  ): Task[CachedDocument] =
     for {
-      // first try to recover it from the cache
-      valueFromCache <- cacheService.get(url)
-      value <- valueFromCache match
-        case Some(v) =>
+      maybeCachedString: Option[CachedString] <-
+        if (forceCacheRefresh)
+          // cache will be skipped
+          ZIO.succeed(None)
+        else
+          // first try to recover it from the cache
+          cacheService.get(url)
+      value: CachedDocument <- maybeCachedString match
+        case Some(cachedString) =>
           // cache hit, return the Document from that cached string
           ZIO.log(s"cache hit for $url") *>
-            documentService.parseString(v)
+            documentService
+              .parseString(cachedString.value)
+              .map(
+                doc =>
+                  cachedString.createdAt match
+                    case Some(t) => CachedDocument(doc, t, cachedString.ttl)
+                    case None    => CachedDocument(doc, ttl = cachedString.ttl)
+              )
         case None =>
           // cache miss
           for {
@@ -40,7 +70,7 @@ class CachedDocumentServiceImpl(
             page <- documentService.get(url)
             // add it to the cache
             _ <- cacheService.set(url, page.toHtml)
-          } yield page
+          } yield CachedDocument(page, ttl = Some(6.hours))
     } yield value
 }
 

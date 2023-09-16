@@ -4,10 +4,11 @@ package dungeondice
 import shared.{StoreName, StoreResource}
 
 import zio.*
-import zio.test._
+import zio.test.*
 import zio.internal.stacktracer.SourceLocation
-
 import io.lemonlabs.uri.Url
+
+import java.time.LocalDateTime
 
 object DDElementParserSpec extends ZIOSpecDefault {
 
@@ -15,10 +16,18 @@ object DDElementParserSpec extends ZIOSpecDefault {
     suiteAll("A DungeonDice element parser") {
 
       val storeResource = StoreResource(StoreName.DUNGEONDICE)
+      val pageDocument = CachedDocument(
+        storeResource.resource("search"),
+        LocalDateTime.now(),
+        Some(6.hours)
+      )
 
       test("should be able to parse an element") {
         for {
-          entryTry <- ElementParser.parse(storeResource.elements.available)
+          entryTry <- ElementParser.parse(
+            storeResource.elements.available,
+            pageDocument
+          )
         } yield {
 
           val result = entryTry.get
@@ -37,7 +46,9 @@ object DDElementParserSpec extends ZIOSpecDefault {
             result.discount.isEmpty,
             result.originalPrice.isEmpty,
             result.discountEndDate.isEmpty,
-            result.lang.isEmpty
+            result.lang.isEmpty,
+            result.pageCreatedOn.isBefore(LocalDateTime.now()),
+            result.pageTTL.contains(6.hours)
           )
         }
       }
@@ -46,13 +57,22 @@ object DDElementParserSpec extends ZIOSpecDefault {
         "can parse single element fields via the low level Parser implementation"
       ) {
         for {
-          parser <- ElementParser.getParser(storeResource.elements.available)
-        } yield assertTrue(parser.title.get == "Terraforming Mars - Big Box")
+          parser <- ElementParser.getParser(
+            storeResource.elements.available,
+            pageDocument
+          )
+        } yield assertTrue(
+          parser.title.get == "Terraforming Mars - Big Box",
+          parser.document.ttl.nonEmpty
+        )
       }
 
       test("should be able to parse a discounted element") {
         for {
-          entryTry <- ElementParser.parse(storeResource.elements.discount)
+          entryTry <- ElementParser.parse(
+            storeResource.elements.discount,
+            pageDocument
+          )
         } yield {
           val result = entryTry.get
           assertTrue(
@@ -64,7 +84,10 @@ object DDElementParserSpec extends ZIOSpecDefault {
 
       test("should be able to parse a timed discounted element") {
         for {
-          entryTry <- ElementParser.parse(storeResource.elements.timer)
+          entryTry <- ElementParser.parse(
+            storeResource.elements.timer,
+            pageDocument
+          )
         } yield assertTrue(
           entryTry.get.discountEndDate.nonEmpty
         )
@@ -73,7 +96,8 @@ object DDElementParserSpec extends ZIOSpecDefault {
       test("should be able to parse an unavailable element") {
         for {
           entryTry <- ElementParser.parse(
-            storeResource.elements.unavailable
+            storeResource.elements.unavailable,
+            pageDocument
           )
         } yield {
           val result = entryTry.get
@@ -86,7 +110,10 @@ object DDElementParserSpec extends ZIOSpecDefault {
 
       test("should be able to parse a preorder element") {
         for {
-          entryTry <- ElementParser.parse(storeResource.elements.preorder)
+          entryTry <- ElementParser.parse(
+            storeResource.elements.preorder,
+            pageDocument
+          )
         } yield assertTrue(
           entryTry.get.availableStatus == Status.PREORDER
         )

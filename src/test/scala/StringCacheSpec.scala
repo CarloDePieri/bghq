@@ -9,8 +9,8 @@ import mocks._
 
 object StringCacheSpec extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
-    suite("A string cache service should")(
-      //
+    suiteAll("A string cache service should") {
+
       test("allow to cache a value") {
         for {
           redisTest <- ZIO.service[Redis]
@@ -21,27 +21,56 @@ object StringCacheSpec extends ZIOSpecDefault {
           assertTrue(found.get == MockBrowser.documentStringEncoded)
         }
       }
-        .provide(RedisTestLayer, RedisStringCache.layer),
-      //
-      test("... allow to read a cached value") {
+        .provide(RedisTestLayer, RedisStringCache.layer)
+
+      test("allow to read a cached value") {
+        for {
+          redisTest <- ZIO.service[Redis]
+          _ <- redisTest.set(
+            MockBrowser.safeUrl,
+            MockBrowser.documentStringEncoded,
+            expireTime = Some(1.hour)
+          )
+          cachedString <- StringCache.get(MockBrowser.url)
+        } yield {
+          val cs = cachedString.get
+          assertTrue(
+            cs.value == MockBrowser.documentString,
+            cs.ttl.contains(1.hour),
+            // TODO improve this
+            cs.createdAt.nonEmpty
+          )
+        }
+      }
+        .provide(RedisTestLayer, RedisStringCache.layer)
+
+      test("should not break when a ttl is not set") {
         for {
           redisTest <- ZIO.service[Redis]
           _ <- redisTest.set(
             MockBrowser.safeUrl,
             MockBrowser.documentStringEncoded
           )
-          value <- StringCache.get(MockBrowser.url)
-        } yield assertTrue(value.get == MockBrowser.documentString)
+          cachedString <- StringCache.get(MockBrowser.url)
+        } yield {
+          val cs = cachedString.get
+          assertTrue(
+            cs.value == MockBrowser.documentString,
+            cs.ttl.isEmpty,
+            cs.createdAt.isEmpty
+          )
+        }
       }
-        .provide(RedisTestLayer, RedisStringCache.layer),
-      //
+        .provide(RedisTestLayer, RedisStringCache.layer)
+
       test("should return Option(None) if the key is not present") {
         for {
           value <- StringCache.get("meaningOfLife")
         } yield assertTrue(value.isEmpty)
       }
         .provide(RedisTestLayer, RedisStringCache.layer)
-    ) @@ TestAspect.silentLogging
+
+    } @@ TestAspect.silentLogging
 }
 
 /**

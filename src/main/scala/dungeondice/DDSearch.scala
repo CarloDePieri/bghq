@@ -20,12 +20,12 @@ class DDSearch(pageParser: PageParser) extends Search {
   }
 
   override def search(
-      query: String,
-      skipCache: Boolean
+                       query: String,
+                       forceCacheRefresh: Boolean
   ): ZStream[CachedDocumentService, Throwable, Try[GameEntry]] =
     pageParser.crawl(
       getSearchUrl(query).get,
-      skipCache
+      forceCacheRefresh
     )
 }
 

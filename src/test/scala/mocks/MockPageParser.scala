@@ -9,10 +9,14 @@ import net.ruippeixotog.scalascraper.model.{Document, Element}
 import zio.stream.ZStream
 
 object MockPageParser extends Mock[PageParser] {
-  object ParsePage extends Method[Document, Nothing, Try[List[Try[GameEntry]]]]
+  object ParsePage
+      extends Method[CachedDocument, Nothing, Try[
+        List[Try[GameEntry]]
+      ]]
   object NextPage extends Method[Document, Nothing, Try[Option[Url]]]
   object SelectElements extends Method[Document, Nothing, Try[List[Element]]]
-  object ParseElement extends Method[Element, Nothing, Try[GameEntry]]
+  object ParseElement
+      extends Method[(Element, CachedDocument), Nothing, Try[GameEntry]]
   object Crawl extends Stream[(Url, Boolean), Throwable, Try[GameEntry]]
 
   override val compose: URLayer[Proxy, PageParser] = {
@@ -22,7 +26,9 @@ object MockPageParser extends Mock[PageParser] {
       } yield {
         val unsafe = zio.Runtime.default.unsafe
         new PageParser:
-          override def parsePage(page: Document): Try[List[Try[GameEntry]]] =
+          override def parsePage(
+              page: CachedDocument
+          ): Try[List[Try[GameEntry]]] =
             Unsafe.unsafely {
               unsafe.run(proxy(ParsePage, page)).getOrThrow()
             }
@@ -30,9 +36,14 @@ object MockPageParser extends Mock[PageParser] {
             Unsafe.unsafely {
               unsafe.run(proxy(SelectElements, page)).getOrThrow()
             }
-          override def parseElement(element: Element): Try[GameEntry] =
+          override def parseElement(
+                                     element: Element,
+                                     fromDocument: CachedDocument
+          ): Try[GameEntry] =
             Unsafe.unsafely {
-              unsafe.run(proxy(ParseElement, element)).getOrThrow()
+              unsafe
+                .run(proxy(ParseElement, element, fromDocument))
+                .getOrThrow()
             }
           override def nextPage(page: Document): Try[Option[Url]] =
             Unsafe.unsafely {
@@ -40,11 +51,11 @@ object MockPageParser extends Mock[PageParser] {
             }
           override def crawl(
               firstPage: Url,
-              skipCache: Boolean = false
+              forceCacheRefresh: Boolean = false
           ): ZStream[CachedDocumentService, Throwable, Try[GameEntry]] =
             Unsafe.unsafely {
               unsafe
-                .run(proxy(Crawl, firstPage, skipCache))
+                .run(proxy(Crawl, firstPage, forceCacheRefresh))
                 .getOrThrow()
             }
       }

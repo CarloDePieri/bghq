@@ -7,12 +7,16 @@ import zio.*
 import zio.test.*
 import zio.mock.*
 
+import java.time.LocalDateTime
+
 object CachedDocumentServiceSpec extends ZIOSpecDefault {
   override def spec: Spec[TestEnvironment with Scope, Any] =
     suiteAll("A cached DocumentService") {
 
       val url = MockBrowser.url
       val document = MockBrowser.document
+      val createdAt = Some(LocalDateTime.now())
+      val ttl = Some(1.hour)
 
       //
       test("should take advantage of the cache when the page is cached") {
@@ -20,7 +24,9 @@ object CachedDocumentServiceSpec extends ZIOSpecDefault {
           MockCacheService
             .Get(
               Assertion.equalTo(url),
-              Expectation.value(Some(MockBrowser.documentString))
+              Expectation.value(
+                Some(CachedString(MockBrowser.documentString, createdAt, ttl))
+              )
             )
         val expectOnlyADocumentParseString =
           // it should not call the DocumentService.get method ...
@@ -33,7 +39,7 @@ object CachedDocumentServiceSpec extends ZIOSpecDefault {
               )
 
         for {
-          doc <- CachedDocumentService
+          cachedDoc: CachedDocument <- CachedDocumentService
             .get(url)
             .provide(
               expectACacheHit,
@@ -42,11 +48,46 @@ object CachedDocumentServiceSpec extends ZIOSpecDefault {
             )
           out <- ZTestLogger.logOutput
         } yield assertTrue(
-          doc.toHtml == document.toHtml,
+          cachedDoc.document.toHtml == document.toHtml,
+          cachedDoc.ttl == ttl,
+          cachedDoc.createdAt == createdAt.get,
           out.hasLogMessage(s"cache hit for $url")
         )
       }
-      //
+
+      test("should ignore the cache when told to do so") {
+        val expectACacheSet = MockCacheService
+          .Set(
+            Assertion.equalTo(
+              // in here I need to specify optional argument, even if they are not actually passed in the actual call
+              (url, document.toHtml, None)
+            ),
+            Expectation.value(true)
+          )
+        val expectOnlyADocumentGet =
+          // It should only call the .get method.
+          MockDocumentService
+            .Get(
+              Assertion.equalTo(url),
+              Expectation.value(document)
+            )
+
+        for {
+          cacheResp <- CachedDocumentService
+            .get(url, forceCacheRefresh = true)
+            .provide(
+              expectOnlyADocumentGet,
+              expectACacheSet,
+              CachedDocumentServiceImpl.layer
+            )
+          out <- ZTestLogger.logOutput
+        } yield assertTrue(
+          cacheResp.document.toHtml == document.toHtml,
+          cacheResp.ttl.contains(6.hours),
+          out.hasLogMessage(s"cache miss for $url")
+        )
+      }
+
       test("should download a page when cache missing") {
         val expectACacheMiss = MockCacheService
           .Get(
@@ -72,7 +113,7 @@ object CachedDocumentServiceSpec extends ZIOSpecDefault {
               )
 
         for {
-          doc <- CachedDocumentService
+          cacheResp <- CachedDocumentService
             .get(url)
             .provide(
               expectOnlyADocumentGet,
@@ -82,7 +123,8 @@ object CachedDocumentServiceSpec extends ZIOSpecDefault {
             )
           out <- ZTestLogger.logOutput
         } yield assertTrue(
-          doc.toHtml == document.toHtml,
+          cacheResp.document.toHtml == document.toHtml,
+          cacheResp.ttl.contains(6.hours),
           out.hasLogMessage(s"cache miss for $url")
         )
       }

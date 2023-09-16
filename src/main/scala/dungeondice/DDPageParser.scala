@@ -27,8 +27,11 @@ class DDPageParser(elementParser: ElementParser) extends PageParser {
       page >> elementList("#js-product-list > div > article")
     }
 
-  override def parseElement(element: Element): Try[GameEntry] =
-    elementParser.parse(element)
+  override def parseElement(
+                             element: Element,
+                             fromDocument: CachedDocument
+  ): Try[GameEntry] =
+    elementParser.parse(element, fromDocument)
 
 }
 
